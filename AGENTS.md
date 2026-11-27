@@ -208,9 +208,13 @@ git push origin v1.0.5
 - Play Store는 APK 대신 **AAB(Android App Bundle)** 권장 → 필요 시 `bundleRelease`로 전환
 - Play App Signing 활성화 시: 지금 키스토어는 "업로드 키" 역할, 실제 배포는 구글 서버 키로 재서명됨
 
-### 릴리즈 완료 조건 — 바탕화면 파일 확인 필수
+### Play 업로드 — CI(`play-release.yml`)
 
-새 버전 만들기 요청은 GitHub Release/CI 성공만으로 완료가 아니다. 사용자가 Play Console에 바로 올릴 수 있도록 실제 바탕화면에 아래 두 파일이 있어야 완료로 보고한다.
+태그 `vX.Y.Z` 푸시 시 `.github/workflows/play-release.yml`이 AAB를 빌드해 Play 비공개 테스트(alpha) 트랙에 올린다(환경 `play` 승인 필요, 프로덕션은 workflow_dispatch의 `production` 입력으로만). 절차·중복 방지는 README "릴리스" 절 참고. 릴리즈 완료 보고에는 GitHub 릴리스 결과와 Play 트랙 상태(워크플로 마지막 단계 출력)를 함께 적는다.
+
+### 바탕화면 파일 — CI Play 업로드를 못 쓸 때만
+
+CI Play 업로드가 실패했거나 쓸 수 없어 Play Console에 손으로 올려야 할 때는, 실제 바탕화면에 아래 두 파일을 놓고 확인한 뒤 보고한다. CI가 이미 올린 버전은 손으로 다시 올리지 않는다.
 
 - `LuminaDaily-vX.X.X-vcN.aab`
 - `LuminaDaily-vX.X.X-vcN-release-notes.txt`
