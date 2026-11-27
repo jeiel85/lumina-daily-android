@@ -102,6 +102,21 @@ npm run build
 - Release APK: `android\app\build\outputs\apk\release\app-release.apk`
 - Release AAB: `android\app\build\outputs\bundle\release\app-release.aab`
 
+### 릴리스
+
+`package.json`·`android/app/build.gradle`(versionName·versionCode)·`CHANGELOG.md`(`## vX.Y.Z - 날짜`)를 맞춘 뒤 태그 `vX.Y.Z`를 푸시하면 워크플로 두 개가 따로 돕니다.
+
+| 워크플로 | 하는 일 |
+|---|---|
+| `deploy.yml` (Build APK and Release) | 시험·APK/AAB 빌드 → GitHub 릴리스 생성. Play에는 올리지 않음 |
+| `play-release.yml` (Play release) | 시험 → AAB 빌드 → 업로드 키 SHA-256 확인 → Play **비공개 테스트(alpha)** 트랙에 업로드 → 트랙 상태 출력 |
+
+- `play-release.yml`은 GitHub 환경 `play`에서 돌며 **jeiel85 승인**이 있어야 시작합니다(Actions 화면의 *Review deployments*). 허용 ref는 `main` 브랜치와 `v*` 태그뿐입니다.
+- 손으로 돌리기(Actions → Play release → Run workflow): `version`(x.y.z), `dry_run`(빌드·서명 확인·트랙 조회만), `production`(alpha에 이어 같은 versionCode를 **프로덕션 전체 출시**, 기본 꺼짐). 태그 실행은 항상 alpha만 올립니다.
+- 출시 노트는 CHANGELOG의 그 버전 항목에서 `검증`·`설정` 절을 뺀 목록(500자까지, ko-KR)입니다. 항목이 없으면 멈춥니다.
+- 두 워크플로는 동시성 그룹이 달라 서로 취소하지 않고, Play 업로드는 `play-release.yml` 한 곳에서만 합니다. CI가 올린 versionCode를 Play Console에 손으로 다시 올리지 마세요(같은 versionCode는 Play가 거부합니다). 로컬에서 올려야 할 때는 전역 `play-publish` 스킬(`tools/play-publish.ps1`과 같은 스크립트)을 쓰고, 그 버전은 CI 업로드를 돌리지 않습니다.
+- 서명: GitHub APK와 Play가 같은 업로드 키(`lumina-upload`, [SIGNING_HANDOFF.md](SIGNING_HANDOFF.md))를 쓰므로 키스토어는 저장소 Secrets `RELEASE_*`를 같이 씁니다. Play 서비스 계정 키(`PLAY_SERVICE_ACCOUNT_JSON`)만 환경 `play`에 있습니다.
+
 ---
 
 ## 명언 데이터
