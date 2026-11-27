@@ -156,7 +156,16 @@ jobs:
       - name: Play 트랙 상태(올리기 전)
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: pwsh -NoProfile -File tools/play-publish.ps1 -PackageName "$PACKAGE" -ShowTracks
+        run: |
+          set -o pipefail
+          pwsh -NoProfile -File tools/play-publish.ps1 -PackageName "$PACKAGE" -ShowTracks | tee play-out/tracks-before.txt
+
+      - name: 업로드 키 서명 확인(AAB)
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          pwsh -NoProfile -File tools/play-publish.ps1 -PackageName "$PACKAGE" -Track alpha -AabPath "$AAB" \
+            -ExpectedUploadCertSha256 "$UPLOAD_CERT_SHA256" -DryRun
 
       - name: Play에 올리기(alpha, 고르면 프로덕션)
         env:
@@ -167,9 +176,15 @@ jobs:
           PROD: ${{ steps.ver.outputs.prod }}
         run: |
           DRYFLAG=(); [ "$DRY" = true ] && DRYFLAG=(-DryRun)
-          pwsh -NoProfile -File tools/play-publish.ps1 -PackageName "$PACKAGE" -Track alpha -AabPath "$AAB" \
-            -ExpectedUploadCertSha256 "$UPLOAD_CERT_SHA256" -ExpectedVersionCode "$CODE" -VersionName "$VER" \
-            -NotesKoFile play-out/notes-ko.txt "${DRYFLAG[@]}"
+          # 이미 어느 트랙에든 붙은 versionCode는 다시 올리지 않습니다(Play가 같은 versionCode 재업로드를 거부).
+          # 태그 실행으로 alpha에 올린 버전을 나중에 production=true로 승격할 때가 이 경우입니다.
+          if grep -Eq "\[versionCode ([0-9]+,)*$CODE(,[0-9]+)*\]" play-out/tracks-before.txt; then
+            echo "versionCode $CODE 는 이미 Play 트랙에 있습니다 — alpha 업로드를 건너뜁니다."
+          else
+            pwsh -NoProfile -File tools/play-publish.ps1 -PackageName "$PACKAGE" -Track alpha -AabPath "$AAB" \
+              -ExpectedUploadCertSha256 "$UPLOAD_CERT_SHA256" -ExpectedVersionCode "$CODE" -VersionName "$VER" \
+              -NotesKoFile play-out/notes-ko.txt "${DRYFLAG[@]}"
+          fi
           if [ "$PROD" = true ]; then
             pwsh -NoProfile -File tools/play-publish.ps1 -PackageName "$PACKAGE" -Track production -ExpectedVersionCode "$CODE" \
               -VersionName "$VER" -NotesKoFile play-out/notes-ko.txt "${DRYFLAG[@]}"
